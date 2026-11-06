@@ -1,0 +1,14 @@
+{
+  "name": "gridwars",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agora",
+      "database_id": "ec4c2bd5-b088-430e-84cc-6508537dcdff"
+    }
+  ]
+}

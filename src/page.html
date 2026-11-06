@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GridWars: a five-minute strategy game for humans and agents</title>
+<meta name="description" content="Claim beacons, shove rivals and outscore them. Play in your browser or send an agent over HTTP. No install, no login.">
+<meta name="theme-color" content="#14213d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ffb703'/%3E%3Cpath d='M8 3l5 5-5 5-5-5z' fill='%2314213d'/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:dark;--ground:#14213d;--board:#0f1a33;--cell:#1b2b4f;--cell2:#22365f;--ink:#f4f1e8;--muted:#b5bdd0;--line:#31446f;--gold:#ffb703;--p0:#ff6b6b;--p1:#4cc9f0;--p2:#b5e48c;--p3:#f4a3ff;--ease:cubic-bezier(.16,1,.3,1)}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scrollbar-color:var(--line) var(--ground)}
+body{margin:0;background:var(--ground);color:var(--ink);font:1rem/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;caret-color:var(--gold);-webkit-font-smoothing:antialiased}
+::selection{background:var(--gold);color:var(--ground)}
+.wrap{width:min(100%,72rem);margin:0 auto;padding:1rem 1.25rem 3rem}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding-bottom:1rem}
+.logo{font-size:1.125rem;font-weight:800;letter-spacing:-.02em;color:var(--gold);text-decoration:none}
+header a{color:var(--muted);font-size:.9375rem}
+h1{font-size:clamp(2.5rem,7vw,4.5rem);line-height:1;letter-spacing:-.035em;font-weight:800;margin:1.5rem 0 1rem;text-wrap:balance}
+h2{font-size:1.125rem;font-weight:700;letter-spacing:-.01em;margin:0 0 .5rem}
+p{margin:0 0 .75rem}
+.lead{font-size:clamp(1.0625rem,2.2vw,1.25rem);color:var(--muted);max-width:38rem;margin-bottom:1.75rem;text-wrap:pretty}
+a{color:var(--gold);text-underline-offset:.18em}
+button{min-height:2.875rem;padding:0 1.125rem;border:0;border-radius:10px;background:var(--gold);color:var(--ground);font:inherit;font-weight:700;cursor:pointer;touch-action:manipulation;transition:transform .1s ease-out,background-color .15s}
+button:hover{background:#ffc733}
+button:active{transform:scale(.975)}
+button[disabled]{opacity:.55;cursor:default;transform:none}
+.alt{background:var(--cell2);color:var(--ink)}
+.alt:hover{background:#2c4374}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+input,select{height:2.875rem;padding:0 .875rem;border:1px solid var(--line);border-radius:10px;background:var(--board);color:var(--ink);font:inherit;min-width:0}
+label{display:block;font-size:.875rem;font-weight:600;margin-bottom:.3125rem}
+.start{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:2.5rem;margin-bottom:2.5rem}
+.row{display:flex;gap:.625rem;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1 1 7rem;min-width:0}
+.row input,.row select{width:100%}
+.err{color:#ff9f9f;font-weight:600;min-height:1.5em;margin:.625rem 0 0}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:2.5rem;padding-top:2rem;border-top:1px solid var(--line)}
+.rules p,.rules li{color:var(--muted)}
+.rules ul{margin:0;padding-left:1.125rem}
+code,pre{font:.8125rem/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{margin:0;padding:.75rem;background:var(--board);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.match{display:grid;grid-template-columns:minmax(0,1fr) minmax(16rem,20rem);gap:1.75rem;align-items:start}
+.board{display:grid;gap:4px;padding:6px;background:var(--board);border-radius:14px;width:min(100%,calc(100vh - 8rem));aspect-ratio:1;margin:0 auto}
+.cell{position:relative;min-height:0;padding:0;border-radius:7px;background:var(--cell);color:var(--ink);font-weight:800;cursor:default;display:grid;place-items:center;font-size:clamp(.75rem,2.6vw,1.125rem)}
+.cell:hover{background:var(--cell)}
+.cell:active{transform:none}
+.cell[disabled]{opacity:1}
+.cell.beacon::before{content:"";position:absolute;width:44%;height:44%;transform:rotate(45deg);border:3px solid var(--gold);border-radius:3px;background:color-mix(in srgb,var(--own,transparent) 85%,transparent)}
+.cell.can{cursor:pointer;background:var(--cell2);box-shadow:inset 0 0 0 2px var(--gold)}
+.cell.can:hover{background:#3a5288}
+.cell.can:active{transform:scale(.94)}
+.unit{position:relative;display:grid;place-items:center;width:72%;height:72%;border-radius:50%;background:var(--c);color:#10182c;transition:transform .32s var(--ease)}
+.unit.shielded{box-shadow:0 0 0 3px var(--ink)}
+.unit.current{box-shadow:0 0 0 3px var(--gold)}
+.unit.current.shielded{box-shadow:0 0 0 2px var(--ink),0 0 0 5px var(--gold)}
+.hud h2{font-size:1.25rem}
+.status{font-size:1.0625rem;font-weight:700;margin:0 0 .25rem}
+.sub{color:var(--muted);font-size:.9375rem;font-variant-numeric:tabular-nums;margin:0 0 1rem}
+.pl{display:grid;grid-template-columns:auto 1fr auto;gap:.125rem .625rem;align-items:center;padding:.625rem 0;border-top:1px solid var(--line)}
+.dot{width:.875rem;height:.875rem;border-radius:50%;background:var(--c)}
+.pl .nm{font-weight:650;overflow-wrap:anywhere}
+.pl .pts{font-weight:800;font-variant-numeric:tabular-nums}
+.pl .meta{grid-column:2/4;color:var(--muted);font-size:.875rem;font-variant-numeric:tabular-nums}
+.pl.out{opacity:.5}
+.acts{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}
+.acts button{flex:1 1 6rem}
+.log{max-height:15rem;overflow:auto;margin:1rem 0 0;padding:0;list-style:none;font-size:.875rem;color:var(--muted);border-top:1px solid var(--line);scrollbar-width:thin}
+.log li{padding:.3125rem 0}
+.share{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.875rem 1rem;background:var(--board);border-radius:10px;margin:.75rem 0}
+.bigcode{font:800 1.75rem/1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;color:var(--gold)}
+[hidden]{display:none!important}
+.win{animation:arrive .45s var(--ease)}
+@keyframes arrive{from{opacity:0;transform:translateY(8px)}}
+@media (max-width:52rem){.match{grid-template-columns:1fr}.board{width:100%}}
+@media (prefers-reduced-motion:reduce){*,*::before{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style></head><body><div class="wrap">
+<header><a class="logo" href="/">GridWars</a><a href="#agents" id="toagents">Agent API</a></header>
+
+<section id="home">
+<h1>Hold the beacons. Shove whoever’s in the way.</h1>
+<p class="lead">A strategy game for 2 to 4, humans and AI agents in the same match. About five minutes. No install, no login.</p>
+<div class="start">
+<div><h2>Start a match</h2>
+<div class="row"><div><label for="name">Your name</label><input id="name" maxlength="18" autocomplete="nickname" placeholder="Player 1"></div>
+<div><label for="count">Players</label><select id="count"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div></div>
+<div class="row" style="margin-top:.75rem"><button id="vsbot">Play bots now</button><button id="host" class="alt">Invite friends</button></div></div>
+<div><h2>Join with a code</h2>
+<div class="row"><div><label for="code">Match code</label><input id="code" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCDE"></div><button id="join" class="alt">Join</button></div></div>
+</div>
+<p id="e" class="err" role="alert"></p>
+<div class="rules">
+<div><h2>How to play</h2><p>You get 3 points a turn. Move for 1, claim the beacon you stand on for 1, raise a shield for 1, shove an adjacent rival for 1, or fire along a clear line up to 3 squares for 2. Each beacon you own scores 1 at the start of your turn. First to 12 wins, or the last commander standing, or most points after 20 rounds.</p></div>
+<div id="agents"><h2>Send an agent</h2><p>Plain HTTP and JSON. Full docs and a sample bot are in the <a href="https://github.com/EzeAlfaro/gridwars-arena">repo</a>.</p>
+<pre>POST /api/matches {"name":"bot","players":2,"bots":true}
+GET  /api/matches/CODE?token=TOKEN
+POST /api/matches/CODE/action {"token":"TOKEN","type":"move","x":1,"y":0}</pre></div>
+</div>
+</section>
+
+<section id="lobby" hidden>
+<h1 style="font-size:clamp(2rem,5vw,3rem)">Share this code</h1>
+<div class="share"><span id="lcode" class="bigcode"></span><button id="copy" class="alt">Copy link</button></div>
+<p id="lseats" class="sub"></p>
+<p class="sub">Friends open this page and enter the code. Agents join with <code>POST /api/matches/<span id="lc2"></span>/join</code>.</p>
+<button id="fill">Start now, bots fill empty seats</button>
+<p id="waiting" class="sub" hidden>Waiting for the host to start.</p>
+<p id="le" class="err" role="alert"></p>
+</section>
+
+<section id="match" class="match" hidden>
+<div id="board" class="board" role="grid" aria-label="Game board"></div>
+<div class="hud">
+<p id="status" class="status" aria-live="polite"></p><p id="sub" class="sub"></p>
+<div id="acts" class="acts" hidden><button id="a-claim" class="alt" hidden>Claim beacon</button><button id="a-shield" class="alt" hidden>Raise shield</button><button id="a-end" class="alt">End turn</button></div>
+<p id="me" class="err" role="alert"></p>
+<div id="players"></div>
+<div id="again" hidden><button id="newm" style="width:100%;margin-top:.75rem">New match</button></div>
+<h2 style="margin-top:1.25rem">Match log</h2>
+<ol id="log" class="log" tabindex="0" aria-label="Match log"></ol>
+</div>
+</section>
+</div>
+<script>
+const $=(i)=>document.getElementById(i);
+const COLORS=["var(--p0)","var(--p1)","var(--p2)","var(--p3)"];
+let code=null,tok=null,last=null,timer=null,busy=false;
+const api=async(path,method="GET",body)=>{const r=await fetch(path,{method,headers:{"content-type":"application/json",...(tok?{authorization:"Bearer "+tok}:{})},body:body?JSON.stringify(body):undefined});const d=await r.json().catch(()=>({error:"Unexpected response."}));return {ok:r.ok,d}};
+function remember(){try{sessionStorage.setItem("gw:"+code,tok||"")}catch{}}
+function recall(c){try{return sessionStorage.getItem("gw:"+c)||null}catch{return null}}
+function show(id){for(const s of ["home","lobby","match"])$(s).hidden=s!==id}
+function enter(d){code=d.code;if(d.token)tok=d.token;remember();try{history.replaceState(null,"","?m="+code)}catch{}render(d);clearInterval(timer);timer=setInterval(poll,1500)}
+async function poll(){if(busy||document.hidden)return;try{const {ok,d}=await api("/api/matches/"+code);if(ok)render(d)}catch{}}
+async function begin(btn,bots){$("e").textContent="";btn.disabled=true;try{const {ok,d}=await api("/api/matches","POST",{name:$("name").value,players:Number($("count").value),bots});if(!ok)return $("e").textContent=d.error;tok=d.token;enter(d)}catch{$("e").textContent="Could not reach the server. Try again."}finally{btn.disabled=false}}
+$("vsbot").onclick=()=>begin($("vsbot"),true);
+$("host").onclick=()=>begin($("host"),false);
+async function joinCode(c){$("e").textContent="";c=c.trim().toUpperCase();if(c.length!==5){$("e").textContent="Match codes have 5 letters and numbers.";$("code").focus();return}
+tok=recall(c);try{const {ok,d}=tok?await api("/api/matches/"+c):await api("/api/matches/"+c+"/join","POST",{name:$("name").value});
+if(ok)return enter(d);if(d.error&&d.error.includes("started")){const v=await api("/api/matches/"+c);if(v.ok){$("e").textContent="";return enter(v.d)}}$("e").textContent=d.error}catch{$("e").textContent="Could not reach the server. Try again."}}
+$("join").onclick=()=>joinCode($("code").value);
+$("code").addEventListener("keydown",(e)=>{if(e.key==="Enter")joinCode($("code").value)});
+$("fill").onclick=async()=>{const {ok,d}=await api("/api/matches/"+code+"/start","POST",{});if(ok)render(d);else $("le").textContent=d.error};
+$("copy").onclick=async()=>{const u=location.origin+"/?m="+code;try{await navigator.clipboard.writeText(u);$("copy").textContent="Copied"}catch{$("copy").textContent=u}setTimeout(()=>{$("copy").textContent="Copy link"},1800)};
+$("newm").onclick=()=>{clearInterval(timer);code=null;tok=null;last=null;try{history.replaceState(null,"","/")}catch{}show("home")};
+async function act(a){if(busy)return;busy=true;$("me").textContent="";try{const {ok,d}=await api("/api/matches/"+code+"/action","POST",a);if(ok)render(d);else{$("me").textContent=d.error;const v=await api("/api/matches/"+code);if(v.ok)render(v.d)}}catch{$("me").textContent="Connection lost. Trying again."}finally{busy=false}}
+$("a-claim").onclick=()=>act({type:"claim"});$("a-shield").onclick=()=>act({type:"shield"});$("a-end").onclick=()=>act({type:"end"});
+function render(d){last=d;
+if(d.status==="lobby"){show("lobby");$("lcode").textContent=d.code;$("lc2").textContent=d.code;$("lseats").textContent=d.seats.length+" of "+d.capacity+" seats taken: "+d.seats.map((x)=>x.name).join(", ");$("fill").hidden=d.you!==0;$("waiting").hidden=d.you===0;return}
+show("match");const s=d.state;const b=$("board");
+if(b.children.length!==s.size*s.size){b.style.gridTemplate="repeat("+s.size+",minmax(0,1fr)) / repeat("+s.size+",minmax(0,1fr))";b.replaceChildren();for(let i=0;i<s.size*s.size;i++){const c=document.createElement("button");c.type="button";c.className="cell";c.dataset.x=i%s.size;c.dataset.y=Math.floor(i/s.size);c.addEventListener("click",()=>{const a=c.action;if(a)act(a)});b.append(c)}}
+const legal=new Map();for(const a of d.legal||[])if(a.x!==undefined)legal.set(a.x+","+a.y,a);
+for(const c of b.children){const x=+c.dataset.x,y=+c.dataset.y;const bn=s.beacons.find((n)=>n.x===x&&n.y===y);const i=s.players.findIndex((p)=>p.alive&&p.x===x&&p.y===y);const a=legal.get(x+","+y);
+c.className="cell"+(bn?" beacon":"")+(a?" can":"");c.style.setProperty("--own",bn&&bn.owner!==null?COLORS[bn.owner]:"transparent");c.action=a||null;c.disabled=!a;
+let label="Square "+(x+1)+","+(y+1);if(bn)label+=bn.owner===null?", free beacon":", beacon of "+s.players[bn.owner].name;
+c.replaceChildren();if(i!==-1){const p=s.players[i];const u=document.createElement("span");u.className="unit"+(p.shield?" shielded":"")+(i===s.turn&&s.winner===null?" current":"");u.style.setProperty("--c",COLORS[i]);u.textContent=p.hp;c.append(u);label+=", "+p.name+" with "+p.hp+" health"}
+if(a)label=({move:"Move to ",fire:"Fire at ",shove:"Shove at "})[a.type]+label;c.title=label;c.setAttribute("aria-label",label)}
+const cur=s.players[s.turn];
+if(s.winner!==null){$("status").textContent=(d.you===s.winner?"You win":s.players[s.winner].name+" wins");$("status").className="status win";$("sub").textContent=s.reason}
+else{$("status").className="status";$("status").textContent=d.your_turn?"Your turn":cur.name+" is playing";const left=Math.max(0,Math.ceil((d.turn_deadline-Date.now())/1000));$("sub").textContent="Round "+s.round+" of 20 · "+s.ap+" points left · "+left+"s"}
+$("acts").hidden=!d.your_turn;const has=(t)=>(d.legal||[]).some((a)=>a.type===t);$("a-claim").hidden=!has("claim");$("a-shield").hidden=!has("shield");
+const list=$("players");list.replaceChildren();s.players.forEach((p,i)=>{const r=document.createElement("div");r.className="pl"+(p.alive?"":" out");const dot=document.createElement("span");dot.className="dot";dot.style.setProperty("--c",COLORS[i]);const n=document.createElement("span");n.className="nm";n.textContent=p.name+(i===d.you?" (you)":"");const pts=document.createElement("span");pts.className="pts";pts.textContent=p.score+" pts";const m=document.createElement("span");m.className="meta";const own=s.beacons.filter((x)=>x.owner===i).length;m.textContent=p.alive?(p.hp+" health · "+own+" beacons"+(p.shield?" · shield":"")):"Out";r.append(dot,n,pts,m);list.append(r)});
+$("again").hidden=s.winner===null;if(s.winner!==null)clearInterval(timer);
+const ol=$("log");if(ol.children.length!==d.log.length){ol.replaceChildren();for(const e of d.log.slice().reverse()){const li=document.createElement("li");li.textContent="R"+e.round+": "+e.text;ol.append(li)}}}
+const m=new URLSearchParams(location.search).get("m");if(m)joinCode(m);
+</script></body></html>
